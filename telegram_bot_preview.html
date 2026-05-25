@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Telegram Bot Preview — zionyx</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700;800&family=Syne:wght@400;700;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:       #0a0a0f;
+    --surface:  #111118;
+    --panel:    #16161f;
+    --border:   #1e1e2e;
+    --cyan:     #00d9ff;
+    --green:    #00ff9d;
+    --yellow:   #ffd93d;
+    --red:      #ff4757;
+    --purple:   #a855f7;
+    --text:     #e2e8f0;
+    --muted:    #4a5568;
+    --tg-blue:  #2CA5E0;
+    --tg-dark:  #1a1a2e;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── GRID NOISE BACKGROUND ── */
+  body::before {
+    content:'';
+    position:fixed; inset:0;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 20% 40%, rgba(0,217,255,.04) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 60%, rgba(168,85,247,.04) 0%, transparent 60%),
+      repeating-linear-gradient(0deg, transparent, transparent 40px, rgba(255,255,255,.01) 40px, rgba(255,255,255,.01) 41px),
+      repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(255,255,255,.01) 40px, rgba(255,255,255,.01) 41px);
+    pointer-events:none; z-index:0;
+  }
+
+  .wrapper { position:relative; z-index:1; }
+
+  /* ── HEADER ── */
+  header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 18px 32px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,10,15,.9);
+    backdrop-filter: blur(12px);
+    position: sticky; top:0; z-index:50;
+  }
+
+  .logo {
+    font-family:'Syne',sans-serif; font-weight:800; font-size:1.1rem;
+    letter-spacing:.15em; text-transform:uppercase;
+    background: linear-gradient(90deg, var(--cyan), var(--purple));
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  }
+
+  .badge {
+    font-size:.65rem; padding:4px 10px; border-radius:999px;
+    border:1px solid; letter-spacing:.08em; text-transform:uppercase;
+  }
+  .badge-green { border-color:var(--green); color:var(--green); }
+  .badge-cyan  { border-color:var(--cyan);  color:var(--cyan);  }
+
+  .header-right { display:flex; gap:10px; align-items:center; }
+
+  .dot-live {
+    width:8px; height:8px; border-radius:50%;
+    background:var(--green);
+    box-shadow:0 0 8px var(--green);
+    animation: pulse-dot 1.5s infinite;
+  }
+  @keyframes pulse-dot {
+    0%,100%{ opacity:1; transform:scale(1); }
+    50%    { opacity:.5; transform:scale(1.4); }
+  }
+
+  /* ── MAIN LAYOUT ── */
+  .main {
+    display:grid; grid-template-columns:1fr 1fr;
+    gap:0; height:calc(100vh - 61px);
+  }
+
+  /* ── LEFT: TERMINAL ── */
+  .terminal-pane {
+    border-right:1px solid var(--border);
+    display:flex; flex-direction:column;
+    background: var(--surface);
+  }
+
+  .pane-header {
+    display:flex; align-items:center; gap:8px;
+    padding:10px 16px;
+    border-bottom:1px solid var(--border);
+    background:var(--panel);
+    font-size:.7rem; color:var(--muted);
+    letter-spacing:.06em;
+  }
+
+  .dot { width:12px;height:12px;border-radius:50%; }
+  .dot-r{background:#ff5f57;} .dot-y{background:#febc2e;} .dot-g{background:#28c840;}
+
+  .pane-title { margin-left:6px; font-size:.72rem; color:var(--muted); }
+
+  .terminal-body {
+    flex:1; overflow-y:auto; padding:18px 20px;
+    font-size:.78rem; line-height:1.9;
+    scrollbar-width:thin; scrollbar-color:var(--border) transparent;
+  }
+
+  .t-line { display:flex; gap:8px; opacity:0; animation:fadeSlide .3s forwards; }
+  .t-prompt { color:var(--green); flex-shrink:0; }
+  .t-cmd    { color:var(--cyan); }
+  .t-out    { color:var(--text); padding-left:20px; }
+  .t-info   { color:var(--muted); padding-left:20px; font-style:italic; }
+  .t-warn   { color:var(--yellow); padding-left:20px; }
+  .t-ok     { color:var(--green); padding-left:20px; }
+  .t-err    { color:var(--red); padding-left:20px; }
+
+  @keyframes fadeSlide {
+    from{ opacity:0; transform:translateY(4px); }
+    to  { opacity:1; transform:translateY(0); }
+  }
+
+  .cursor-blink {
+    display:inline-block; width:8px; height:14px;
+    background:var(--cyan); margin-left:2px; vertical-align:middle;
+    animation: blink .8s step-end infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  /* ── COMMAND BUTTONS ── */
+  .cmd-panel {
+    border-top:1px solid var(--border);
+    padding:12px 16px;
+    background:var(--panel);
+  }
+
+  .cmd-label {
+    font-size:.6rem; color:var(--muted); letter-spacing:.1em;
+    text-transform:uppercase; margin-bottom:10px;
+  }
+
+  .cmd-grid {
+    display:flex; flex-wrap:wrap; gap:6px;
+  }
+
+  .cmd-btn {
+    font-family:'JetBrains Mono',monospace;
+    font-size:.68rem; padding:5px 12px;
+    border-radius:6px; cursor:pointer;
+    border:1px solid var(--border);
+    background:transparent; color:var(--cyan);
+    transition:all .2s; letter-spacing:.04em;
+  }
+  .cmd-btn:hover {
+    border-color:var(--cyan);
+    background:rgba(0,217,255,.08);
+    box-shadow:0 0 12px rgba(0,217,255,.2);
+    transform:translateY(-1px);
+  }
+  .cmd-btn:active { transform:translateY(0); }
+
+  /* ── RIGHT: TELEGRAM CHAT ── */
+  .chat-pane {
+    display:flex; flex-direction:column;
+    background: var(--tg-dark);
+  }
+
+  /* Telegram topbar */
+  .tg-topbar {
+    display:flex; align-items:center; gap:12px;
+    padding:10px 16px;
+    background:#1f1f33;
+    border-bottom:1px solid rgba(255,255,255,.05);
+  }
+
+  .tg-avatar {
+    width:38px; height:38px; border-radius:50%;
+    background:linear-gradient(135deg,var(--tg-blue),var(--purple));
+    display:flex; align-items:center; justify-content:center;
+    font-size:1.1rem; flex-shrink:0;
+    box-shadow:0 0 12px rgba(44,165,224,.4);
+  }
+
+  .tg-name { font-size:.85rem; font-weight:700; color:#fff; font-family:'Syne',sans-serif; }
+  .tg-status { font-size:.65rem; color:var(--green); margin-top:1px; }
+
+  .tg-actions { margin-left:auto; display:flex; gap:14px; }
+  .tg-icon { color:var(--muted); font-size:1rem; cursor:pointer; }
+  .tg-icon:hover { color:var(--cyan); }
+
+  /* Chat messages area */
+  .chat-msgs {
+    flex:1; overflow-y:auto; padding:16px 14px;
+    display:flex; flex-direction:column; gap:8px;
+    scrollbar-width:thin; scrollbar-color:var(--border) transparent;
+    background:
+      radial-gradient(ellipse 60% 40% at 10% 20%, rgba(44,165,224,.04) 0%, transparent 60%),
+      var(--tg-dark);
+  }
+
+  /* Date separator */
+  .date-sep {
+    text-align:center; font-size:.6rem; color:var(--muted);
+    margin:4px 0; letter-spacing:.06em;
+  }
+
+  /* Message bubbles */
+  .msg { display:flex; flex-direction:column; max-width:78%; opacity:0; animation:msgPop .35s forwards; }
+  .msg-user { align-self:flex-end; align-items:flex-end; }
+  .msg-bot  { align-self:flex-start; align-items:flex-start; }
+
+  @keyframes msgPop {
+    from{ opacity:0; transform:scale(.92) translateY(6px); }
+    to  { opacity:1; transform:scale(1) translateY(0); }
+  }
+
+  .bubble {
+    padding:9px 13px; border-radius:14px;
+    font-size:.75rem; line-height:1.65;
+    word-break:break-word; position:relative;
+  }
+
+  .msg-user .bubble {
+    background: linear-gradient(135deg, #2b5278, #3a7abd);
+    border-bottom-right-radius:3px;
+    color:#e8f4fd;
+  }
+
+  .msg-bot .bubble {
+    background: #1e2235;
+    border-bottom-left-radius:3px;
+    color:var(--text);
+    border:1px solid rgba(255,255,255,.05);
+  }
+
+  .msg-time {
+    font-size:.55rem; color:var(--muted); margin-top:3px; padding:0 4px;
+  }
+
+  .msg-bot-name {
+    font-size:.6rem; color:var(--tg-blue); font-weight:700;
+    margin-bottom:3px; padding:0 4px;
+  }
+
+  /* Inline keyboard buttons inside chat */
+  .inline-kb { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .kb-btn {
+    background:rgba(44,165,224,.15);
+    border:1px solid rgba(44,165,224,.3);
+    color:var(--tg-blue); border-radius:8px;
+    padding:6px 14px; font-size:.68rem;
+    cursor:pointer; font-family:'JetBrains Mono',monospace;
+    transition:all .2s;
+  }
+  .kb-btn:hover {
+    background:rgba(44,165,224,.3);
+    border-color:var(--tg-blue);
+    transform:scale(1.04);
+  }
+
+  /* Typing indicator */
+  .typing-indicator {
+    display:none; align-self:flex-start;
+    background:#1e2235; border-radius:14px; border-bottom-left-radius:3px;
+    padding:10px 16px; gap:5px; align-items:center;
+    border:1px solid rgba(255,255,255,.05);
+  }
+  .typing-indicator.show { display:flex; }
+  .typing-dot {
+    width:7px; height:7px; border-radius:50%;
+    background:var(--muted);
+    animation:typingBounce 1.2s infinite;
+  }
+  .typing-dot:nth-child(2){ animation-delay:.2s; }
+  .typing-dot:nth-child(3){ animation-delay:.4s; }
+  @keyframes typingBounce {
+    0%,80%,100%{ transform:translateY(0); background:var(--muted); }
+    40%        { transform:translateY(-6px); background:var(--cyan); }
+  }
+
+  /* Tg input bar */
+  .tg-inputbar {
+    display:flex; align-items:center; gap:10px;
+    padding:10px 14px;
+    background:#1f1f33;
+    border-top:1px solid rgba(255,255,255,.05);
+  }
+
+  .tg-input {
+    flex:1; background:#2a2a45; border:1px solid rgba(255,255,255,.06);
+    border-radius:22px; padding:8px 16px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:.72rem; color:var(--text); outline:none;
+    transition:border-color .2s;
+  }
+  .tg-input:focus { border-color:rgba(44,165,224,.4); }
+  .tg-input::placeholder { color:var(--muted); }
+
+  .tg-send {
+    width:36px; height:36px; border-radius:50%;
+    background:linear-gradient(135deg,var(--tg-blue),var(--purple));
+    border:none; cursor:pointer; display:flex; align-items:center;
+    justify-content:center; font-size:.9rem;
+    transition:all .2s; flex-shrink:0;
+    box-shadow:0 2px 8px rgba(44,165,224,.3);
+  }
+  .tg-send:hover { transform:scale(1.1); box-shadow:0 4px 16px rgba(44,165,224,.5); }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width:4px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align:center; padding:10px;
+    font-size:.6rem; color:var(--muted);
+    border-top:1px solid var(--border);
+    letter-spacing:.06em;
+    background:var(--surface);
+  }
+  footer span { color:var(--purple); }
+
+  /* ── RESPONSIVE ── */
+  @media(max-width:700px){
+    .main{ grid-template-columns:1fr; grid-template-rows:1fr 1fr; }
+    .terminal-pane{ border-right:none; border-bottom:1px solid var(--border); }
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+<!-- HEADER -->
+<header>
+  <div class="logo">🤖 Telegram Bot</div>
+  <div class="header-right">
+    <div class="dot-live"></div>
+    <span class="badge badge-green">LIVE PREVIEW</span>
+    <span class="badge badge-cyan">Python v3.11</span>
+  </div>
+</header>
+
+<!-- MAIN SPLIT -->
+<div class="main">
+
+  <!-- ══ LEFT: TERMINAL ══ -->
+  <div class="terminal-pane">
+    <div class="pane-header">
+      <div class="dot dot-r"></div>
+      <div class="dot dot-y"></div>
+      <div class="dot dot-g"></div>
+      <span class="pane-title">zsh — python main.py</span>
+    </div>
+
+    <div class="terminal-body" id="terminal">
+      <!-- injected by JS -->
+    </div>
+
+    <div class="cmd-panel">
+      <div class="cmd-label">▸ Klik untuk simulasi command</div>
+      <div class="cmd-grid">
+        <button class="cmd-btn" onclick="sendCommand('/start')">/start</button>
+        <button class="cmd-btn" onclick="sendCommand('/help')">/help</button>
+        <button class="cmd-btn" onclick="sendCommand('/info')">/info</button>
+        <button class="cmd-btn" onclick="sendCommand('/profil')">/profil</button>
+        <button class="cmd-btn" onclick="sendCommand('/waktu')">/waktu</button>
+        <button class="cmd-btn" onclick="sendCommand('/hitung 10 * 5')">/hitung 10 * 5</button>
+        <button class="cmd-btn" onclick="sendCommand('/balik Halo Dunia')">/balik</button>
+        <button class="cmd-btn" onclick="sendCommand('/besar halo zionyx')">/besar</button>
+        <button class="cmd-btn" onclick="sendCommand('/echo test bot')">/echo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ RIGHT: TELEGRAM CHAT ══ -->
+  <div class="chat-pane">
+    <div class="tg-topbar">
+      <div class="tg-avatar">🤖</div>
+      <div>
+        <div class="tg-name">MyTelegramBot</div>
+        <div class="tg-status">● online</div>
+      </div>
+      <div class="tg-actions">
+        <span class="tg-icon">🔍</span>
+        <span class="tg-icon">⋮</span>
+      </div>
+    </div>
+
+    <div class="chat-msgs" id="chatMsgs">
+      <div class="date-sep">— Hari ini —</div>
+      <div class="typing-indicator" id="typingIndicator">
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+      </div>
+    </div>
+
+    <div class="tg-inputbar">
+      <input class="tg-input" id="chatInput" placeholder="Ketik perintah..." onkeydown="handleEnter(event)"/>
+      <button class="tg-send" onclick="sendFromInput()">➤</button>
+    </div>
+  </div>
+
+</div>
+
+<footer>crafted with 🩸 &amp; <code>print("debug")</code> — by <span>zionyx</span></footer>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════
+// DATA: bot responses per command
+// ════════════════════════════════════════════════════════
+const responses = {
+  '/start': {
+    text: `👋 *Halo, User!*\n\nSelamat datang di bot ini.\nGunakan tombol di bawah atau ketik perintah untuk mulai.\n\nKetik /help untuk melihat semua perintah.`,
+    keyboard: ['📋 Bantuan', 'ℹ️ Info Bot', '👤 Profil Saya'],
+    log: [
+      { type:'info', text:'Update received: message from @user (id=123456789)' },
+      { type:'ok',   text:'Handler matched: CommandHandler("/start")' },
+      { type:'ok',   text:'Response sent ✓  [200ms]' },
+    ]
+  },
+  '/help': {
+    text: `📋 *Daftar Perintah:*\n\n🔹 /start — Menu utama\n🔹 /help — Perintah ini\n🔹 /info — Info bot\n🔹 /profil — Profil kamu\n🔹 /waktu — Waktu sekarang\n🔹 /hitung — Kalkulator\n🔹 /balik — Balik teks\n🔹 /besar — Huruf besar\n🔹 /echo — Echo pesan`,
+    log: [
+      { type:'info', text:'Update received: /help from @user' },
+      { type:'ok',   text:'Handler matched: CommandHandler("/help")' },
+      { type:'ok',   text:'Response sent ✓  [112ms]' },
+    ]
+  },
+  '/info': {
+    text: `ℹ️ *Info Bot*\n\n🤖 Nama: MyTelegramBot\n📦 Versi: 1.0.0\n🛠 Library: python-telegram-bot v20\n🌐 Bahasa: Python\n\nBot ini dibuat untuk demo perintah Telegram.`,
+    log: [
+      { type:'info', text:'Update received: /info from @user' },
+      { type:'ok',   text:'Handler matched: CommandHandler("/info")' },
+      { type:'ok',   text:'Response sent ✓  [98ms]' },
+    ]
+  },
+  '/profil': {
+    text: `👤 *Profil Kamu*\n\n🆔 ID: \`123456789\`\n👤 Nama: User Demo\n📛 Username: @user_demo\n🌐 Bahasa: id\n💬 Tipe Chat: private`,
+    log: [
+      { type:'info', text:'Update received: /profil from @user_demo (id=123456789)' },
+      { type:'ok',   text:'Handler matched: CommandHandler("/profil")' },
+      { type:'info', text:'Fetched user data from Update object' },
+      { type:'ok',   text:'Response sent ✓  [87ms]' },
+    ]
+  },
+  '/waktu': {
+    text: null, // generated dynamically
+    dynamic: () => {
+      const now = new Date();
+      const hari = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+      const bulan = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+      return `🕐 *Waktu Sekarang*\n\n📅 ${hari[now.getDay()]}, ${now.getDate()} ${bulan[now.getMonth()+1]} ${now.getFullYear()}\n⏰ ${now.toTimeString().slice(0,8)} WIB`;
+    },
+    log: [
+      { type:'info', text:'Update received: /waktu from @user' },
+      { type:'ok',   text:'Handler matched: CommandHandler("/waktu")' },
+      { type:'info', text:'datetime.now() called' },
+      { type:'ok',   text:'Response sent ✓  [74ms]' },
+    ]
+  },
+  '/hitung 10 * 5': {
+    text: `✖️ *Hasil Perhitungan*\n\n\`10 * 5 = 50\``,
+    log: [
+      { type:'info', text:'Update received: /hitung 10 * 5 from @user' },
+      { type:'ok',   text:'Handler matched: CommandHandler("/hitung")' },
+      { type:'info', text:'Args parsed: a=10.0, op="*", b=5.0' },
+      { type:'info', text:'Computing: 10.0 * 5.0 = 50.0' },
+      { type:'ok',   text:'Response sent ✓  [91ms]' },
+    ]
+  },
+  '/balik Halo Dunia': {
+    text: `🔄 *Teks Dibalik*\n\nAsli: Halo Dunia\nDibalik: ainuD olaH`,
+    log: [
+      { type:'info', text:'Update received: /balik Halo Dunia from @user' },
+      { type:'ok',   text:'Handler matched: CommandHandler("/balik")' },
+      { type:'info', text:'Input: "Halo Dunia" → reversed: "ainuD olaH"' },
+      { type:'ok',   text:'Response sent ✓  [66ms]' },
+    ]
+  },
+  '/besar halo zionyx': {
+    text: `🔠 \`HALO ZIONYX\``,
+    log: [
+      { type:'info', text:'Update received: /besar halo zionyx from @user' },
+      { type:'ok',   text:'Handler matched: CommandHandler("/besar")' },
+      { type:'info', text:'"halo zionyx".upper() → "HALO ZIONYX"' },
+      { type:'ok',   text:'Response sent ✓  [58ms]' },
+    ]
+  },
+  '/echo test bot': {
+    text: `🗣 test bot`,
+    log: [
+      { type:'info', text:'Update received: /echo test bot from @user' },
+      { type:'ok',   text:'Handler matched: CommandHandler("/echo")' },
+      { type:'ok',   text:'Response sent ✓  [54ms]' },
+    ]
+  },
+};
+
+// ════════════════════════════════════════════════════════
+// TERMINAL BOOT SEQUENCE
+// ════════════════════════════════════════════════════════
+const terminal = document.getElementById('terminal');
+const chatMsgs = document.getElementById('chatMsgs');
+const typingEl = document.getElementById('typingIndicator');
+
+function addTermLine(type, text, delay=0) {
+  setTimeout(() => {
+    const line = document.createElement('div');
+    line.className = `t-line t-${type}`;
+    line.style.animationDelay = '0s';
+
+    if (type === 'prompt') {
+      line.innerHTML = `<span class="t-prompt">❯</span><span class="t-cmd"> ${escHtml(text)}</span>`;
+    } else {
+      line.innerHTML = `<span class="${'t-'+type}">${escHtml(text)}</span>`;
+    }
+    terminal.appendChild(line);
+    terminal.scrollTop = terminal.scrollHeight;
+  }, delay);
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+const boot = [
+  { type:'info', text:'$ python main.py', d:0 },
+  { type:'out',  text:'', d:200 },
+  { type:'out',  text:'Loading config.py ...', d:400 },
+  { type:'ok',   text:'✓ BOT_TOKEN loaded', d:700 },
+  { type:'out',  text:'Registering handlers ...', d:900 },
+  { type:'ok',   text:'✓ /start  /help  /info  /profil', d:1100 },
+  { type:'ok',   text:'✓ /waktu  /hitung  /balik  /besar  /echo', d:1200 },
+  { type:'ok',   text:'✓ CallbackQueryHandler registered', d:1300 },
+  { type:'ok',   text:'✓ MessageHandler (TEXT) registered', d:1400 },
+  { type:'ok',   text:'✓ ErrorHandler registered', d:1500 },
+  { type:'out',  text:'', d:1700 },
+  { type:'warn', text:'INFO  Application started (polling)', d:1900 },
+  { type:'ok',   text:'🤖 Bot sedang berjalan... Tekan Ctrl+C untuk berhenti.', d:2200 },
+  { type:'out',  text:'', d:2400 },
+  { type:'info', text:'Waiting for updates...', d:2600 },
+];
+
+boot.forEach(b => addTermLine(b.type === 'info' && b.text.startsWith('$') ? 'prompt' : b.type, b.text, b.d));
+
+// Cursor
+setTimeout(() => {
+  const cur = document.createElement('div');
+  cur.className = 't-line t-out';
+  cur.innerHTML = `<span class="t-muted">❯ </span><span class="cursor-blink"></span>`;
+  cur.style.animationDelay='0s';
+  terminal.appendChild(cur);
+  terminal.scrollTop = terminal.scrollHeight;
+}, 2800);
+
+// ════════════════════════════════════════════════════════
+// SEND COMMAND
+// ════════════════════════════════════════════════════════
+let msgCount = 0;
+
+function now() {
+  return new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
+}
+
+function sendCommand(cmd) {
+  const data = responses[cmd];
+  if (!data) return;
+
+  // 1. Add user bubble
+  addUserMsg(cmd);
+
+  // 2. Log incoming update
+  const logLines = data.log || [];
+  let logDelay = 100;
+  logLines.forEach(l => {
+    addTermLine(l.type, l.text, logDelay);
+    logDelay += 220;
+  });
+
+  // 3. Show typing indicator
+  showTyping(true);
+
+  // 4. After delay → add bot reply
+  const replyDelay = logDelay + 300;
+  setTimeout(() => {
+    showTyping(false);
+    const text = data.dynamic ? data.dynamic() : data.text;
+    addBotMsg(text, data.keyboard || null);
+  }, replyDelay);
+}
+
+function addUserMsg(text) {
+  const el = document.createElement('div');
+  el.className = 'msg msg-user';
+  el.style.animationDelay = '0s';
+  el.innerHTML = `
+    <div class="bubble">${escHtml(text)}</div>
+    <div class="msg-time">${now()} ✓✓</div>
+  `;
+  chatMsgs.insertBefore(el, typingEl);
+  chatMsgs.scrollTop = chatMsgs.scrollHeight;
+}
+
+function addBotMsg(text, keyboard) {
+  const el = document.createElement('div');
+  el.className = 'msg msg-bot';
+  el.style.animationDelay = '0s';
+
+  // Markdown-lite: bold *text*, code `text`
+  const formatted = text
+    .replace(/\*(.+?)\*/g, '<strong>$1</strong>')
+    .replace(/`(.+?)`/g, '<code style="background:rgba(0,217,255,.1);padding:1px 5px;border-radius:4px;color:var(--cyan)">$1</code>')
+    .replace(/\n/g, '<br>');
+
+  let kbHtml = '';
+  if (keyboard && keyboard.length) {
+    kbHtml = `<div class="inline-kb">${keyboard.map(k =>
+      `<button class="kb-btn" onclick="handleKbClick('${k}')">${k}</button>`
+    ).join('')}</div>`;
+  }
+
+  el.innerHTML = `
+    <div class="msg-bot-name">🤖 MyTelegramBot</div>
+    <div class="bubble">${formatted}${kbHtml}</div>
+    <div class="msg-time">${now()}</div>
+  `;
+  chatMsgs.insertBefore(el, typingEl);
+  chatMsgs.scrollTop = chatMsgs.scrollHeight;
+}
+
+function handleKbClick(label) {
+  addUserMsg(label);
+  showTyping(true);
+  setTimeout(() => {
+    showTyping(false);
+    const replies = {
+      '📋 Bantuan':    `📋 *Daftar Perintah:*\n\n/start /help /info /profil /waktu\n/hitung /balik /besar /echo`,
+      'ℹ️ Info Bot':   `ℹ️ *Info Bot*\n\n🤖 MyTelegramBot v1.0.0\n🛠 python-telegram-bot v20`,
+      '👤 Profil Saya':`👤 *Profil Kamu*\n\n🆔 ID: \`123456789\`\n👤 Nama: User Demo\n📛 @user_demo`,
+    };
+    addBotMsg(replies[label] || `Kamu menekan: ${label}`);
+    addTermLine('info', `CallbackQuery received: data="${label}"`, 0);
+    addTermLine('ok',   `CallbackQueryHandler matched ✓  [83ms]`, 200);
+  }, 900);
+}
+
+function showTyping(v) {
+  typingEl.classList.toggle('show', v);
+  if (v) chatMsgs.scrollTop = chatMsgs.scrollHeight;
+}
+
+function handleEnter(e) {
+  if (e.key === 'Enter') sendFromInput();
+}
+
+function sendFromInput() {
+  const input = document.getElementById('chatInput');
+  const val = input.value.trim();
+  if (!val) return;
+  input.value = '';
+
+  if (responses[val]) {
+    sendCommand(val);
+  } else if (val.startsWith('/')) {
+    addUserMsg(val);
+    showTyping(true);
+    setTimeout(() => {
+      showTyping(false);
+      addBotMsg(`⚠️ Command tidak dikenal: *${val}*\n\nKetik /help untuk daftar perintah.`);
+      addTermLine('warn', `Unknown command: ${val}`, 0);
+    }, 800);
+  } else {
+    addUserMsg(val);
+    showTyping(true);
+    setTimeout(() => {
+      showTyping(false);
+      addBotMsg(`💬 Kamu bilang: *${val}*\n\nKetik /help untuk melihat perintah yang tersedia.`);
+      addTermLine('info', `Message received: "${val}"`, 0);
+      addTermLine('ok', `MessageHandler matched ✓  [71ms]`, 200);
+    }, 700);
+  }
+}
+</script>
+</body>
+</html>
